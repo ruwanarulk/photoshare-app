@@ -8,9 +8,12 @@ import {
 // --- FIREBASE CONFIGURATION & INIT ---
 import { signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
+// @ts-ignore
 import { auth, db } from './firebase';
 
 const appId = '1:91303472070:web:f9dbd5c22ad119c618e0c7';
+
+declare var __initial_auth_token: string | undefined;
 
 // --- MOCK DATA & SERVICES ---
 // In the real app, this would be stored in Firebase Firestore
@@ -20,7 +23,7 @@ const initialGalleries = [
 ];
 
 // Simulates fetching images from Google Drive API
-const fetchMockImages = (folderId) => {
+const fetchMockImages = (folderId: string) => {
   return new Promise((resolve) => {
     setTimeout(() => {
       // Generate some high-quality unsplash images for the prototype
@@ -42,7 +45,7 @@ const fetchMockImages = (folderId) => {
 };
 
 // Real Google Drive API Fetcher
-const fetchRealDriveImages = async (folderId, apiKey) => {
+const fetchRealDriveImages = async (folderId: string, apiKey: string) => {
   try {
     const query = encodeURIComponent(`'${folderId}' in parents and mimeType contains 'image/'`);
     // Added webContentLink as a fallback if thumbnailLink is missing
@@ -58,7 +61,7 @@ const fetchRealDriveImages = async (folderId, apiKey) => {
 
     if (!data.files) return [];
 
-    return data.files.map(file => {
+    return data.files.map((file: any) => {
       // 1. Try to use thumbnailLink and upgrade its resolution.
       // Drive thumbnails default to a small size (=s220). We replace it with =s1600.
       // Some links have extra query params, so we replace =s\d+ anywhere.
@@ -87,7 +90,7 @@ const fetchRealDriveImages = async (folderId, apiKey) => {
 // --- COMPONENTS ---
 
 // 1. Toast Notification Component
-const Toast = ({ message, onClose }) => {
+const Toast = ({ message, onClose }: any) => {
   if (!message) return null;
   return (
     <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-2 z-50 animate-fade-in-up">
@@ -98,11 +101,11 @@ const Toast = ({ message, onClose }) => {
 };
 
 // 2. Client Gallery View Component
-const ClientGallery = ({ gallery, apiKey, onBackToAdmin }) => {
-  const [images, setImages] = useState([]);
+const ClientGallery = ({ gallery, apiKey, onBackToAdmin }: any) => {
+  const [images, setImages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [lightboxIndex, setLightboxIndex] = useState(null);
-  const [error, setError] = useState(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -122,20 +125,20 @@ const ClientGallery = ({ gallery, apiKey, onBackToAdmin }) => {
         });
     } else {
       // Fallback to mock images if no API key or using dummy data
-      fetchMockImages(gallery.folderId).then(fetchedImages => {
+      fetchMockImages(gallery.folderId).then((fetchedImages: any) => {
         setImages(fetchedImages);
         setLoading(false);
       });
     }
   }, [gallery]);
 
-  const openLightbox = (index) => setLightboxIndex(index);
+  const openLightbox = (index: number) => setLightboxIndex(index);
   const closeLightbox = () => setLightboxIndex(null);
-  const nextImage = (e) => { e.stopPropagation(); setLightboxIndex((prev) => (prev + 1) % images.length); };
-  const prevImage = (e) => { e.stopPropagation(); setLightboxIndex((prev) => (prev - 1 + images.length) % images.length); };
+  const nextImage = (e: any) => { e.stopPropagation(); setLightboxIndex((prev) => prev !== null ? (prev + 1) % images.length : 0); };
+  const prevImage = (e: any) => { e.stopPropagation(); setLightboxIndex((prev) => prev !== null ? (prev - 1 + images.length) % images.length : 0); };
 
   // Function to handle direct image downloading
-  const handleDownload = async (imageUrl, filename, e) => {
+  const handleDownload = async (imageUrl: string, filename: string, e: any) => {
     e.stopPropagation(); // Prevent opening the lightbox if clicked from the grid
     try {
       // Fetch the image as a blob to force download instead of opening in browser
@@ -165,7 +168,7 @@ const ClientGallery = ({ gallery, apiKey, onBackToAdmin }) => {
 
   // Handle keyboard navigation in lightbox
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: any) => {
       if (lightboxIndex === null) return;
       if (e.key === 'ArrowRight') nextImage(e);
       if (e.key === 'ArrowLeft') prevImage(e);
@@ -286,7 +289,7 @@ const ClientGallery = ({ gallery, apiKey, onBackToAdmin }) => {
 };
 
 // 3. Admin Dashboard Component
-const AdminDashboard = ({ galleries, apiKey, onCreateGallery, onDeleteGallery, onSaveApiKey, onPreviewGallery, onLogout }) => {
+const AdminDashboard = ({ galleries, apiKey, onCreateGallery, onDeleteGallery, onSaveApiKey, onPreviewGallery, onLogout }: any) => {
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newFolderId, setNewFolderId] = useState('');
@@ -298,12 +301,12 @@ const AdminDashboard = ({ galleries, apiKey, onCreateGallery, onDeleteGallery, o
     setLocalApiKey(apiKey || '');
   }, [apiKey]);
 
-  const showToast = (msg) => {
+  const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  const handleCreate = (e) => {
+  const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newFolderId.trim()) return;
     
@@ -321,13 +324,13 @@ const AdminDashboard = ({ galleries, apiKey, onCreateGallery, onDeleteGallery, o
     showToast('Gallery created successfully!');
   };
 
-  const deleteGallery = (id) => {
+  const deleteGallery = (id: string) => {
     // In a real app, use a custom modal. For prototype, direct delete is fine.
     onDeleteGallery(id);
     showToast('Gallery deleted');
   };
 
-  const copyLink = (id) => {
+  const copyLink = (id: string) => {
     const url = `${window.location.origin}${window.location.pathname}#gallery/${id}`;
     
     // Use document.execCommand for iframe compatibility (Canvas environment)
@@ -348,7 +351,7 @@ const AdminDashboard = ({ galleries, apiKey, onCreateGallery, onDeleteGallery, o
     document.body.removeChild(textArea);
   };
 
-  const saveSettings = (e) => {
+  const saveSettings = (e: React.FormEvent) => {
     e.preventDefault();
     onSaveApiKey(localApiKey);
     showToast('Settings saved to cloud!');
@@ -468,7 +471,7 @@ const AdminDashboard = ({ galleries, apiKey, onCreateGallery, onDeleteGallery, o
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {galleries.map((g) => (
+                  {galleries.map((g: any) => (
                     <tr key={g.id} className="hover:bg-gray-50 transition group">
                       <td className="px-6 py-4">
                         <div className="font-semibold text-gray-900">{g.title}</div>
@@ -538,11 +541,11 @@ const AdminDashboard = ({ galleries, apiKey, onCreateGallery, onDeleteGallery, o
 // 4. Main App / Router Component
 export default function App() {
   const [currentRoute, setCurrentRoute] = useState('login');
-  const [activeGalleryId, setActiveGalleryId] = useState(null);
+  const [activeGalleryId, setActiveGalleryId] = useState<string | null>(null);
 
   // Cloud State replacing Local Storage
-  const [user, setUser] = useState(null);
-  const [galleries, setGalleries] = useState([]);
+  const [user, setUser] = useState<any>(null);
+  const [galleries, setGalleries] = useState<any[]>([]);
   const [apiKey, setApiKey] = useState('');
   const [isLoadingDb, setIsLoadingDb] = useState(true);
 
@@ -576,7 +579,7 @@ export default function App() {
     const unsubGalleries = onSnapshot(galleriesRef, (snapshot) => {
       const loaded = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       // Sort newest galleries first based on date
-      loaded.sort((a, b) => new Date(b.date) - new Date(a.date));
+      loaded.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setGalleries(loaded);
       setIsLoadingDb(false);
     }, console.error);
@@ -596,7 +599,7 @@ export default function App() {
   }, [user]);
 
   // Cloud Database Actions
-  const handleCreateGallery = async (newGallery) => {
+  const handleCreateGallery = async (newGallery: any) => {
     if (!user) return;
     try {
       await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'galleries', newGallery.id), newGallery);
@@ -605,7 +608,7 @@ export default function App() {
     }
   };
 
-  const handleDeleteGallery = async (id) => {
+  const handleDeleteGallery = async (id: string) => {
     if (!user) return;
     try {
       await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'galleries', id));
@@ -614,7 +617,7 @@ export default function App() {
     }
   };
 
-  const handleSaveApiKey = async (newKey) => {
+  const handleSaveApiKey = async (newKey: string) => {
     if (!user) return;
     try {
       await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), { 
@@ -648,7 +651,7 @@ export default function App() {
 
   // Helpers to navigate without real router
   const goToAdmin = () => window.location.hash = 'admin';
-  const previewGallery = (id) => window.location.hash = `gallery/${id}`;
+  const previewGallery = (id: string) => window.location.hash = `gallery/${id}`;
   const handleLogout = () => window.location.hash = '';
 
   // Render logic based on route
