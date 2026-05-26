@@ -141,11 +141,25 @@ const ClientGallery = ({ gallery, apiKey, onBackToAdmin }: any) => {
   const handleDownload = async (imageUrl: string, filename: string, e: any) => {
     e.stopPropagation(); // Prevent opening the lightbox if clicked from the grid
     try {
-      // Fetch the image as a blob to force download instead of opening in browser
+      // Fetch the image as a blob
       const response = await fetch(imageUrl);
       const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
       
+      // Attempt to use native mobile share/save if available (iOS/Android)
+      // This allows the user to save directly to their photo gallery!
+      if (navigator.canShare) {
+        const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: filename,
+          });
+          return; // Success, user used the native share sheet
+        }
+      }
+
+      // Fallback for desktop or unsupported browsers
+      const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = blobUrl;
       link.download = filename || 'photo.jpg';
@@ -656,10 +670,19 @@ export default function App() {
 
   // Render logic based on route
   if (currentRoute === 'client-gallery' && activeGalleryId) {
+    if (isLoadingDb) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
+          <Camera className="animate-pulse text-gray-300 mb-4" size={48} />
+          <p className="text-gray-500 font-medium">Loading Gallery...</p>
+        </div>
+      );
+    }
+
     // Find the gallery info to pass to the client view from the lifted state
     const galleryInfo = galleries.find(g => g.id === activeGalleryId) || { 
-      title: 'Demo Gallery (Dynamic)', 
-      folderId: 'demo' 
+      title: 'Gallery Not Found', 
+      folderId: 'error' 
     };
     return <ClientGallery gallery={galleryInfo} apiKey={apiKey} onBackToAdmin={goToAdmin} />;
   }
