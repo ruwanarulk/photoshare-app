@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Camera, FolderOpen, Link as LinkIcon, Plus, LogOut, 
   X, ChevronLeft, ChevronRight, Download, Share2, 
@@ -180,6 +180,27 @@ const ClientGallery = ({ gallery, apiKey, onBackToAdmin }: any) => {
     }
   };
 
+  // Swipe Handlers for mobile lightbox navigation
+  const touchStartX = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const distance = touchStartX.current - touchEndX;
+    const minSwipeDistance = 50;
+
+    if (distance > minSwipeDistance) {
+      nextImage(e as any);
+    } else if (distance < -minSwipeDistance) {
+      prevImage(e as any);
+    }
+    touchStartX.current = null;
+  };
+
   // Handle keyboard navigation in lightbox
   useEffect(() => {
     const handleKeyDown = (e: any) => {
@@ -258,7 +279,12 @@ const ClientGallery = ({ gallery, apiKey, onBackToAdmin }: any) => {
 
       {/* Lightbox */}
       {lightboxIndex !== null && (
-        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm flex items-center justify-center touch-none" onClick={closeLightbox}>
+        <div 
+          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm flex items-center justify-center touch-none" 
+          onClick={closeLightbox}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           {/* Top Controls */}
           <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-50 bg-gradient-to-b from-black/50 to-transparent">
             <div className="text-white/70 text-sm font-medium px-4">
