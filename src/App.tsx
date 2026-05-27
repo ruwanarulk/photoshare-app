@@ -54,7 +54,8 @@ const fetchRealDriveImages = async (folderId: string, apiKey: string) => {
     do {
       const pageTokenParam = pageToken ? `&pageToken=${pageToken}` : '';
       // pageSize=1000 gets the maximum number of items per request to minimize API calls
-      const url = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=nextPageToken,files(id,name,thumbnailLink,webContentLink)&pageSize=1000&key=${apiKey}${pageTokenParam}`;
+      // orderBy=createdTime sorts by the date/time the file was created in Drive (oldest first)
+      const url = `https://www.googleapis.com/drive/v3/files?q=${query}&orderBy=createdTime&fields=nextPageToken,files(id,name,thumbnailLink,webContentLink)&pageSize=1000&key=${apiKey}${pageTokenParam}`;
       
       const response = await fetch(url);
       const data = await response.json();
