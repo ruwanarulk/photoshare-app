@@ -48,30 +48,37 @@ const fetchMockImages = (folderId: string) => {
 const fetchRealDriveImages = async (folderId: string, apiKey: string) => {
   try {
     const query = encodeURIComponent(`'${folderId}' in parents and mimeType contains 'image/'`);
-    // Added webContentLink as a fallback if thumbnailLink is missing
-    const url = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,thumbnailLink,webContentLink)&key=${apiKey}`;
-    
-    const response = await fetch(url);
-    const data = await response.json();
-    
-    if (data.error) {
-      console.error("Drive API Error:", data.error.message);
-      throw new Error(data.error.message);
-    }
+    let allFiles: any[] = [];
+    let pageToken = '';
 
-    if (!data.files) return [];
+    do {
+      const pageTokenParam = pageToken ? `&pageToken=${pageToken}` : '';
+      // pageSize=1000 gets the maximum number of items per request to minimize API calls
+      const url = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=nextPageToken,files(id,name,thumbnailLink,webContentLink)&pageSize=1000&key=${apiKey}${pageTokenParam}`;
+      
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.error) {
+        console.error("Drive API Error:", data.error.message);
+        throw new Error(data.error.message);
+      }
 
-    return data.files.map((file: any) => {
+      if (data.files) {
+        allFiles = allFiles.concat(data.files);
+      }
+
+      pageToken = data.nextPageToken || '';
+    } while (pageToken);
+
+    return allFiles.map((file: any) => {
       // 1. Try to use thumbnailLink and upgrade its resolution.
-      // Drive thumbnails default to a small size (=s220). We replace it with =s1600.
-      // Some links have extra query params, so we replace =s\d+ anywhere.
       let highResUrl;
       
       if (file.thumbnailLink) {
         highResUrl = file.thumbnailLink.replace(/=s\d+(?:-[^=]+)?/, '=s1600');
       } else {
-        // 2. Fallback: webContentLink is blocked by browsers in <img> tags (Content-Disposition: attachment).
-        // Instead, we use the Drive thumbnail endpoint which works perfectly for public files.
+        // 2. Fallback: use the Drive thumbnail endpoint
         highResUrl = `https://drive.google.com/thumbnail?id=${file.id}&sz=w1600`;
       }
 
